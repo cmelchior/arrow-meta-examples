@@ -1,0 +1,17 @@
+pluginManagement {
+    repositories {
+        google()
+        gradlePluginPortal()
+    }
+    resolutionStrategy {
+        eachPlugin {
+            if(requested.id.namespace == "com.android") {
+                useModule("com.android.tools.build:gradle:$ANDROID_TOOLS_VERSION")
+            }
+        }
+    }
+}
+
+include ':create-plugin'
+include ':use-plugin-multiplatform'
+enableFeaturePreview('GRADLE_METADATA')

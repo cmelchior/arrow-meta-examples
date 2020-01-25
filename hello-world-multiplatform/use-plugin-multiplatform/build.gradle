@@ -1,0 +1,185 @@
+plugins {
+    id 'org.jetbrains.kotlin.multiplatform'
+    id "com.android.library"
+
+}
+
+group 'io.arrowmeta.example'
+version '0.0.1'
+
+apply plugin: 'maven-publish'
+
+android {
+    compileSdkVersion 29
+    buildToolsVersion "29.0.2"
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 29
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+        sourceSets {
+            main {
+                manifest.srcFile "src/androidMain/AndroidManifest.xml"
+                androidTest.java.srcDirs += 'src/androidTest/kotlin'
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+        }
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+kotlin {
+
+    // Enable Arrow Meta for all targets except Android, which doesn't have any compilation targets
+    // at this stage.
+    targets.all {
+        compilations.all {
+            kotlinOptions {
+                // `.toString` required to avoid the following error when building for macOS:
+                // org.codehaus.groovy.runtime.GStringImpl cannot be cast to java.lang.String
+                freeCompilerArgs += "-Xplugin=${project.rootDir}/create-plugin/build/libs/create-plugin-all.jar".toString()
+
+            }
+        }
+    }
+
+    android {
+        publishLibraryVariants("release", "debug")
+    }
+    jvm()
+    js {
+        browser {
+        }
+        nodejs {
+        }
+    }
+    // For ARM, should be changed to iosArm32 or iosArm64
+    // For Linux, should be changed to e.g. linuxX64
+    // For MacOS, should be changed to e.g. macosX64
+    // For Windows, should be changed to e.g. mingwX64
+    macosX64("macos")
+    iosX64("ios") // `X64` is for the simulator, use `Arm64` to target real devices
+    sourceSets {
+        commonMain {
+            dependencies {
+                implementation kotlin('stdlib-common')
+            }
+        }
+        commonTest {
+            dependencies {
+                implementation kotlin('test-common')
+                implementation kotlin('test-annotations-common')
+            }
+        }
+        androidMain {
+            kotlin.srcDir("src/androidMain/kotlin")
+            dependencies {
+                implementation(kotlin("stdlib"))
+                compileOnly "io.arrow-kt:arrow-annotations:$ARROW_VERSION"
+                // TODO: We cannot add Arrow meta as a dependency here as it contains an annotation processor,
+                // so the build will fail with:
+                // `Annotation processors must be explicitly declared now.  The following
+                // dependencies on the compile classpath are found to contain annotation processor.
+                // Please add them to the annotationProcessor configuration.`
+            }
+        }
+        androidTest {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(kotlin("test-junit"))
+                implementation 'com.android.support.test:runner:1.0.2'
+                implementation 'com.android.support.test:rules:1.0.2'
+                implementation(kotlin("reflect"))
+            }
+        }
+        jvmMain {
+            dependencies {
+                implementation kotlin('stdlib-jdk8')
+                compileOnly project(path: ':create-plugin', configuration: 'shadow')
+                compileOnly "io.arrow-kt:arrow-annotations:$ARROW_VERSION"
+            }
+        }
+        jvmTest {
+            dependencies {
+                implementation kotlin('test')
+                implementation kotlin('test-junit')
+            }
+        }
+        jsMain {
+            dependencies {
+                // Compiler required to be embedded in the projects using the native compiler (https://youtrack.jetbrains.com/issue/KT-34383#focus=streamItem-27-3774871.0-0)
+                // This includes JS, iOS and macOS
+                implementation project(':create-plugin', 'shadow')
+                implementation kotlin('stdlib-js')
+            }
+        }
+        jsTest {
+            dependencies {
+                // Disabled: See https://stackoverflow.com/questions/56508672/kotlin-multiplatform-gradle-unit-test-not-resolving-kotlin-test-reference
+                 implementation kotlin('test-js')
+            }
+        }
+        macosMain {
+            // Compiler required to be embedded in the projects using the native compiler (https://youtrack.jetbrains.com/issue/KT-34383#focus=streamItem-27-3774871.0-0)
+            // This includes JS, iOS and macOS
+            dependencies {
+                implementation project(':create-plugin', 'shadow')
+            }
+        }
+        macosTest {
+        }
+        iosMain {
+            // Compiler required to be embedded in the projects using the native compiler (https://youtrack.jetbrains.com/issue/KT-34383#focus=streamItem-27-3774871.0-0)
+            // This includes JS, iOS and macOS
+            dependencies {
+                implementation project(':create-plugin', 'shadow')
+            }
+        }
+        iosTest {
+        }
+    }
+}
+
+task iosTest {
+    def device = project.findProperty("iosDevice")?.toString() ?: "iPhone 11 Pro Max"
+    dependsOn kotlin.targets.ios.binaries.getTest('DEBUG').linkTaskName
+    group = JavaBasePlugin.VERIFICATION_GROUP
+    description = "Runs tests for target 'ios' on an iOS simulator"
+
+    doLast {
+        def binary = kotlin.targets.ios.binaries.getTest('DEBUG').outputFile
+        exec {
+            commandLine 'xcrun', 'simctl', 'spawn', device, binary.absolutePath
+        }
+    }
+}
+
+// Required to avoid error like:
+// Unable to resolve dependency for ':use-plugin-multiplatform@debugAndroidTest/compileClasspath': Could not resolve com.android.support.test:runner:1.0.2.
+configurations {
+    compileClasspath
+}
+
+
+// Required to enable Arrow Meta on Android builds as compilation targets are not present during the evaluation phase
+// unlike other targets.
+project.afterEvaluate { p ->
+    compileDebugSources.dependsOn ":create-plugin:shadowJar"
+    compileReleaseSources.dependsOn ":create-plugin:shadowJar"
+    kotlin.targets.android.properties.compilations.each {
+        it.kotlinOptions {
+            freeCompilerArgs += "-Xplugin=${project.rootDir}/create-plugin/build/libs/create-plugin-all.jar"
+            jvmTarget = "$JVM_TARGET_VERSION"
+        }
+    }
+}

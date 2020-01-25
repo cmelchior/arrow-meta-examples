@@ -1,0 +1,14 @@
+plugins {
+    id "org.jetbrains.kotlin.jvm" version "$KOTLIN_VERSION" apply false
+    id "com.github.johnrengelman.shadow" version "$SHADOW_JAR_VERSION" apply false
+    id "com.android.library" apply false
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://oss.jfrog.org/artifactory/oss-snapshot-local/' }
+        jcenter()
+    }
+}
