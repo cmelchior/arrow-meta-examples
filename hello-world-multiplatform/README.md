@@ -18,7 +18,7 @@ It is unclear how to resolve this.
 
 ### macOS/iOS
 
-1. Run with `./gradlew macosTest`, and observe it fails with:
+1. Run `./gradlew macosTest`, and observe it fails with:
 
 ```
 > Task :use-plugin-multiplatform:compileKotlinIos FAILED
@@ -73,8 +73,8 @@ kotlin.NotImplementedError: An operation is not implemented.
 
 ### Android
 
-Runs correctly be running `./gradlew connectedAndroidTests`. Remember to have an emulator active
-or an device attached.
+1. Run `./gradlew connectedAndroidTests`. Remember to have an emulator active or an device attached.
+2. Observe it runs correctly.
 
 This only works if `build.gradle` is modified in an unintuitive way. I.e. Android will fail the 
 build if Arrow Meta is added as a normal dependency due to the fact that it apparently contains an
@@ -83,7 +83,8 @@ annotation processor.
 
 ### JVM
 
-Runs correctly by running `./gradlew jvmTests`.
+1. Run `./gradlew jvmTests`.
+2. Observe it runs correctly.
 
 
 ## Gotchas
